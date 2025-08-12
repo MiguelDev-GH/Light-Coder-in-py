@@ -7,7 +7,7 @@ class ExactMinimalistCTkEditor(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # --- Paleta de Cores da Imagem ---
+        # --- Paleta de Cores ---
         self.APP_BG = "#1c1c1c"
         self.FG_PRIMARY = "#e3e3e3"
         self.FG_SECONDARY = "#8f9094"
@@ -16,40 +16,62 @@ class ExactMinimalistCTkEditor(ctk.CTk):
         self.SELECTION_BG = "#3c3c3c"
         self.CLOSE_RED = "#e81123"
         self.CLOSE_RED_HOVER = "#f15562"
-        self.DIVIDER_COLOR = "#3c3c3c"
 
         # --- Configuração da Janela ---
         self.overrideredirect(True)
         self.geometry("1200x750+100+100")
         self.configure(fg_color=self.APP_BG)
+        # Esconde a janela principal para começar
+        self.withdraw()
 
         self._offset_x = 0
         self._offset_y = 0
-
         self.current_file_path = None
         self.bind("<Control-s>", self.save_file)
-
+        
+        # --- Configuração da Barra de Tarefas ---
+        self.taskbar_window = tk.Toplevel(self)
+        self.taskbar_window.title("Editor de Código Minimalista")
+        # self.taskbar_window.iconbitmap("seu_icone.ico")
+        # Esconde a janela fantasma, mas ela ainda existe para a barra de tarefas
+        self.taskbar_window.withdraw()
+        
+        # --- Lógica de Fechamento ---
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.taskbar_window.protocol("WM_DELETE_WINDOW", self.on_close)
+        
         self.create_widgets()
         self.update_file_path_display()
-        
-        self.setup_taskbar_icon()
 
-    def setup_taskbar_icon(self):
-        self.icon_window = tk.Toplevel(self)
-        self.icon_window.title("Editor de Código Minimalista")
-        
-        # self.icon_window.iconbitmap("seu_icone.ico")
-        
-        self.wm_transient(self.icon_window)
-        self.icon_window.withdraw()
-        self.icon_window.bind("<Map>", self.on_restore)
-        self.icon_window.bind("<Unmap>", self.on_minimize)
+        # Inicia o "fiscal" de estado
+        self.sync_taskbar()
 
-    def on_restore(self, event):
-        self.deiconify()
+    def sync_taskbar(self):
+        # Esta função é o nosso "fiscal"
+        try:
+            # Pega o estado do ícone na barra de tarefas ("normal", "iconic", "withdrawn")
+            taskbar_state = self.taskbar_window.state()
+            
+            # Pega o estado da nossa janela principal
+            main_window_state = self.state()
 
-    def on_minimize(self, event):
-        self.withdraw()
+            # Sincroniza os estados se estiverem diferentes
+            if main_window_state != taskbar_state:
+                if taskbar_state == 'normal':
+                    self.deiconify() # Restaura
+                elif taskbar_state == 'iconic':
+                    self.withdraw() # Minimiza
+
+            # Agenda a próxima verificação
+            self.after(200, self.sync_taskbar)
+        except tk.TclError:
+            # A janela foi fechada, para o loop
+            pass
+
+    def on_close(self):
+        # Cancela o agendamento do fiscal antes de fechar
+        self.after_cancel(self.sync_taskbar)
+        self.destroy()
 
     def create_widgets(self):
         # --- Barra Superior Customizada ---
@@ -60,20 +82,21 @@ class ExactMinimalistCTkEditor(ctk.CTk):
         self.file_path_label = ctk.CTkLabel(top_frame, text="", anchor="w", fg_color="transparent")
         self.file_path_label.pack(side="left", padx=10, fill="both", expand=True)
         
+        # O botão de minimizar agora atua na janela da barra de tarefas
+        minimize_button = ctk.CTkButton(
+            top_frame, text="\u2014", command=self.taskbar_window.iconify,
+            width=32, height=32, fg_color="transparent", hover_color=self.BUTTON_HOVER_BG,
+            text_color=self.FG_SECONDARY, font=("Segoe UI", 16)
+        )
+        minimize_button.pack(side="right", padx=(0, 5))
+        
         close_button = ctk.CTkButton(
-            top_frame,
-            text="\u2715",
-            command=self.quit, 
-            width=32,
-            height=32,
-            fg_color="transparent",
-            hover_color=self.CLOSE_RED,
-            text_color=self.FG_SECONDARY,
-            font=("Segoe UI", 16)
+            top_frame, text="\u2715", command=self.on_close, 
+            width=32, height=32, fg_color="transparent", hover_color=self.CLOSE_RED,
+            text_color=self.FG_SECONDARY, font=("Segoe UI", 16)
         )
         close_button.pack(side="right")
         
-        # Eventos para arrastar a janela
         top_frame.bind("<ButtonPress-1>", self.start_move)
         top_frame.bind("<ButtonRelease-1>", self.stop_move)
         top_frame.bind("<B1-Motion>", self.do_move)
@@ -95,28 +118,19 @@ class ExactMinimalistCTkEditor(ctk.CTk):
         
         open_folder_button = ctk.CTkButton(
             left_pane, text="Abrir Pasta", command=self.open_folder,
-            fg_color=self.BUTTON_BG,
-            hover_color=self.BUTTON_HOVER_BG,
-            corner_radius=15,
-            font=("Calibri", 13, "bold")
+            fg_color=self.BUTTON_BG, hover_color=self.BUTTON_HOVER_BG,
+            corner_radius=15, font=("Calibri", 13, "bold")
         )
         open_folder_button.grid(row=0, column=0, sticky="w", padx=15, pady=15)
 
         # --- Treeview (Explorador de Arquivos) ---
         style = ttk.Style()
         style.theme_use("clam")
-        style.configure("Treeview", 
-                        background=self.APP_BG,
-                        foreground=self.FG_PRIMARY,
-                        fieldbackground=self.APP_BG,
-                        borderwidth=0,
-                        rowheight=25)
+        style.configure("Treeview", background=self.APP_BG, foreground=self.FG_PRIMARY,
+                        fieldbackground=self.APP_BG, borderwidth=0, rowheight=25)
         style.map("Treeview", background=[("selected", self.SELECTION_BG)])
-        style.configure("Treeview.Heading", 
-                        background=self.APP_BG, 
-                        foreground=self.FG_SECONDARY,
-                        font=("Calibri", 10, "bold"),
-                        relief="flat")
+        style.configure("Treeview.Heading", background=self.APP_BG, foreground=self.FG_SECONDARY,
+                        font=("Calibri", 10, "bold"), relief="flat")
         style.map("Treeview.Heading", background=[("active", self.APP_BG)])
         
         tree_frame = ctk.CTkFrame(left_pane, fg_color="transparent")
@@ -129,16 +143,12 @@ class ExactMinimalistCTkEditor(ctk.CTk):
         
         # --- Painel Direito (Editor) ---
         self.text_editor = ctk.CTkTextbox(
-            main_frame, 
-            corner_radius=0,
-            fg_color=self.APP_BG,
-            text_color=self.FG_PRIMARY,
-            font=("Consolas", 14),
-            wrap="none"
+            main_frame, corner_radius=0, fg_color=self.APP_BG, text_color=self.FG_PRIMARY,
+            font=("Consolas", 14), wrap="none"
         )
         self.text_editor.grid(row=0, column=1, sticky="nsew", padx=(1, 5), pady=5)
     
-    # --- MÉTODOS PARA MOVER A JANELA ---
+    # --- Métodos para Mover a Janela ---
     def start_move(self, event):
         self._offset_x = event.x
         self._offset_y = event.y
@@ -148,12 +158,12 @@ class ExactMinimalistCTkEditor(ctk.CTk):
         self._offset_y = None
 
     def do_move(self, event):
-        if self._offset_x is None:
-            return
+        if self._offset_x is None: return
         x = self.winfo_pointerx() - self._offset_x
         y = self.winfo_pointery() - self._offset_y
         self.geometry(f"+{x}+{y}")
     
+    # --- Métodos de Lógica do Editor ---
     def update_file_path_display(self):
         if self.current_file_path:
             self.file_path_label.configure(text=self.current_file_path)
@@ -172,7 +182,6 @@ class ExactMinimalistCTkEditor(ctk.CTk):
             try:
                 with open(file_path, "r", encoding="utf-8") as file:
                     content = file.read()
-                
                 self.text_editor.delete("1.0", "end")
                 self.text_editor.insert("1.0", content)
                 self.current_file_path = file_path
@@ -192,10 +201,8 @@ class ExactMinimalistCTkEditor(ctk.CTk):
     def open_folder(self):
         folder_path = filedialog.askdirectory()
         if not folder_path: return
-        
         for i in self.file_tree.get_children():
             self.file_tree.delete(i)
-        
         root_node = self.file_tree.insert("", "end", text=os.path.basename(folder_path), open=True, values=[folder_path])
         self._populate_tree_recursive(folder_path, root_node)
 
@@ -210,4 +217,6 @@ class ExactMinimalistCTkEditor(ctk.CTk):
 
 if __name__ == "__main__":
     app = ExactMinimalistCTkEditor()
+    # Mostra a janela da barra de tarefas (e a principal, via "fiscal")
+    app.taskbar_window.deiconify() 
     app.mainloop()
