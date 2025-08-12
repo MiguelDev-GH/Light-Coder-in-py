@@ -1,120 +1,120 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
 import os
+import customtkinter as ctk
 
-class MinimalistEditor(tk.Tk):
+class ExactMinimalistCTkEditor(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.BG_COLOR = "#1e1e1e"
-        self.FG_COLOR = "#d4d4d4"
-        self.INACTIVE_FG_COLOR = "#6c6c6c"
-        self.WIDGET_BG_COLOR = "#252526"
-        self.SEPARATOR_COLOR = "#333333"
-        self.SELECTION_BG = "#2a2d2e"
+        # --- Paleta de Cores da Imagem ---
+        self.APP_BG = "#1c1c1c"
+        self.FG_PRIMARY = "#e3e3e3"
+        self.FG_SECONDARY = "#8f9094"
+        self.BUTTON_BG = "#333333"
+        self.BUTTON_HOVER_BG = "#3c3c3c"
+        self.SELECTION_BG = "#3c3c3c"
+        self.CLOSE_RED = "#e81123"
+        self.CLOSE_RED_HOVER = "#f15562"
+        self.DIVIDER_COLOR = "#3c3c3c"
 
+        # --- Configuração da Janela ---
         self.overrideredirect(True)
-        self.geometry("1200x700+100+100")
-        self.configure(bg=self.BG_COLOR)
+        self.geometry("1200x750+100+100")
+        self.configure(fg_color=self.APP_BG)
 
         self._offset_x = 0
         self._offset_y = 0
 
-        self.create_styles()
-        self.create_widgets()
-        
         self.current_file_path = None
         self.bind("<Control-s>", self.save_file)
+
+        self.create_widgets()
         self.update_file_path_display()
 
-    def create_styles(self):
-        style = ttk.Style(self)
-        style.theme_use("clam")
-        
-        style.configure("TFrame", background=self.BG_COLOR)
-        style.configure("TLabel", background=self.BG_COLOR, foreground=self.FG_COLOR)
-        style.configure("TButton", 
-            background=self.WIDGET_BG_COLOR, 
-            foreground=self.FG_COLOR,
-            borderwidth=0,
-            relief="flat",
-            padding=5
-        )
-        style.map("TButton", background=[("active", self.SEPARATOR_COLOR)])
-
-        style.configure("Custom.TPanedwindow", background=self.BG_COLOR)
-        
-        style.configure("Treeview",
-                        background=self.WIDGET_BG_COLOR,
-                        foreground=self.FG_COLOR,
-                        fieldbackground=self.WIDGET_BG_COLOR,
-                        borderwidth=0,
-                        relief="flat")
-        style.map("Treeview", background=[("selected", self.SELECTION_BG)])
-        
-        style.configure("Treeview.Heading",
-                        background=self.WIDGET_BG_COLOR,
-                        foreground=self.FG_COLOR,
-                        relief="flat",
-                        font=('Calibri', 10, 'bold'))
-        style.map("Treeview.Heading", relief=[("active", "groove"), ("pressed", "sunken")])
-        
-        style.configure("TSeparator", background=self.SEPARATOR_COLOR)
-
     def create_widgets(self):
-        title_bar = ttk.Frame(self, style="TFrame")
-        title_bar.pack(side="top", fill="x", ipady=5)
+        # --- Barra Superior Customizada ---
+        top_frame = ctk.CTkFrame(self, height=40, corner_radius=0, fg_color="transparent")
+        top_frame.pack(side="top", fill="x", padx=4, pady=4)
+        top_frame.pack_propagate(False)
 
-        self.file_path_label = ttk.Label(title_bar, text="", style="TLabel", foreground=self.INACTIVE_FG_COLOR)
-        self.file_path_label.pack(side="left", padx=10)
+        self.file_path_label = ctk.CTkLabel(top_frame, text="", anchor="w", fg_color="transparent")
+        self.file_path_label.pack(side="left", padx=10, fill="both", expand=True)
         
-        close_button = ttk.Button(title_bar, text="✕", command=self.quit, width=3, style="TButton")
-        close_button.pack(side="right", padx=5)
-
-        title_bar.bind("<ButtonPress-1>", self.start_move)
-        title_bar.bind("<ButtonRelease-1>", self.stop_move)
-        title_bar.bind("<B1-Motion>", self.do_move)
+        # BOTÃO DE FECHAR MODIFICADO
+        close_button = ctk.CTkButton(
+            top_frame,
+            text="\u2715",  # Caractere 'x'
+            command=self.quit, 
+            width=32,
+            height=32,
+            fg_color="transparent",
+            hover_color=self.CLOSE_RED,
+            text_color=self.FG_SECONDARY,
+            font=("Segoe UI", 16)
+        )
+        close_button.pack(side="right")
+        
+        top_frame.bind("<ButtonPress-1>", self.start_move)
         self.file_path_label.bind("<ButtonPress-1>", self.start_move)
-        self.file_path_label.bind("<ButtonRelease-1>", self.stop_move)
-        self.file_path_label.bind("<B1-Motion>", self.do_move)
 
-        separator = ttk.Separator(self, orient="horizontal")
-        separator.pack(side="top", fill="x")
+        # --- Conteúdo Principal (dividido em dois) ---
+        main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True)
+        main_frame.grid_columnconfigure(1, weight=1)
+        main_frame.grid_rowconfigure(0, weight=1)
 
-        main_pane = ttk.PanedWindow(self, orient=tk.HORIZONTAL, style="Custom.TPanedwindow")
-        main_pane.pack(fill=tk.BOTH, expand=True)
-
-        left_pane = ttk.Frame(main_pane, style="TFrame", width=300)
-        main_pane.add(left_pane, weight=1)
-
-        explorer_header = ttk.Frame(left_pane, style="TFrame")
-        explorer_header.pack(side="top", fill="x", pady=5)
+        # --- Painel Esquerdo (Explorador) ---
+        left_pane = ctk.CTkFrame(main_frame, width=320, corner_radius=0, fg_color="transparent")
+        left_pane.grid(row=0, column=0, sticky="nsew", padx=(5,0), pady=5)
+        left_pane.grid_propagate(False)
+        left_pane.grid_rowconfigure(1, weight=1)
         
-        open_folder_button = ttk.Button(explorer_header, text="Abrir Pasta", command=self.open_folder)
-        open_folder_button.pack(side="left", padx=10)
+        open_folder_button = ctk.CTkButton(
+            left_pane, text="Abrir Pasta", command=self.open_folder,
+            fg_color=self.BUTTON_BG,
+            hover_color=self.BUTTON_HOVER_BG,
+            corner_radius=15,
+            font=("Calibri", 13, "bold")
+        )
+        open_folder_button.grid(row=0, column=0, sticky="w", padx=15, pady=15)
 
-        self.file_tree = ttk.Treeview(left_pane, show="tree headings")
+        # --- Treeview (Explorador de Arquivos) ---
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Treeview", 
+                        background=self.APP_BG,
+                        foreground=self.FG_PRIMARY,
+                        fieldbackground=self.APP_BG,
+                        borderwidth=0,
+                        rowheight=25)
+        style.map("Treeview", background=[("selected", self.SELECTION_BG)])
+        style.configure("Treeview.Heading", 
+                        background=self.APP_BG, 
+                        foreground=self.FG_SECONDARY,
+                        font=("Calibri", 10, "bold"),
+                        relief="flat")
+        style.map("Treeview.Heading", background=[("active", self.APP_BG)])
+        
+        tree_frame = ctk.CTkFrame(left_pane, fg_color="transparent")
+        tree_frame.grid(row=1, column=0, sticky="nsew", padx=5)
+
+        self.file_tree = ttk.Treeview(tree_frame, style="Treeview")
         self.file_tree.heading("#0", text="Explorador", anchor="w")
-        self.file_tree.pack(side="left", fill=tk.BOTH, expand=True)
+        self.file_tree.pack(side="left", fill="both", expand=True)
         self.file_tree.bind("<<TreeviewSelect>>", self.on_file_select)
         
-        right_pane = ttk.Frame(main_pane, style="TFrame")
-        main_pane.add(right_pane, weight=4)
-
-        self.text_editor = tk.Text(right_pane,
-                                   background=self.BG_COLOR,
-                                   foreground=self.FG_COLOR,
-                                   insertbackground=self.FG_COLOR,
-                                   selectbackground="#4a4a4a",
-                                   selectforeground=self.FG_COLOR,
-                                   borderwidth=0,
-                                   highlightthickness=0,
-                                   font=("Consolas", 12),
-                                   undo=True,
-                                   wrap="none",
-                                   padx=10, pady=10)
-        self.text_editor.pack(fill=tk.BOTH, expand=True)
-
+        # --- Painel Direito (Editor) ---
+        self.text_editor = ctk.CTkTextbox(
+            main_frame, 
+            corner_radius=0,
+            fg_color=self.APP_BG,
+            text_color=self.FG_PRIMARY,
+            font=("Consolas", 14),
+            wrap="none"
+        )
+        self.text_editor.grid(row=0, column=1, sticky="nsew", padx=(1, 5), pady=5)
+    
     def start_move(self, event):
         self._offset_x = event.x
         self._offset_y = event.y
@@ -130,47 +130,43 @@ class MinimalistEditor(tk.Tk):
     
     def update_file_path_display(self):
         if self.current_file_path:
-            self.file_path_label.config(text=self.current_file_path, foreground=self.FG_COLOR)
+            self.file_path_label.configure(text=self.current_file_path)
         else:
-            self.file_path_label.config(text="[Nenhum arquivo aberto]", foreground=self.INACTIVE_FG_COLOR)
+            self.file_path_label.configure(text="Nenhum arquivo aberto")
 
     def on_file_select(self, event=None):
         selected_item = self.file_tree.focus()
-        if not selected_item:
-            return
+        if not selected_item: return
 
-        file_path = self.file_tree.item(selected_item)["values"][0]
+        item = self.file_tree.item(selected_item)
+        if not item or not item["values"]: return
         
+        file_path = item["values"][0]
         if os.path.isfile(file_path):
             try:
                 with open(file_path, "r", encoding="utf-8") as file:
                     content = file.read()
                 
-                self.text_editor.delete("1.0", tk.END)
+                self.text_editor.delete("1.0", "end")
                 self.text_editor.insert("1.0", content)
                 self.current_file_path = file_path
                 self.update_file_path_display()
-            except Exception as e:
+            except Exception:
                 self.current_file_path = None
                 self.update_file_path_display()
 
     def save_file(self, event=None):
-        if not self.current_file_path:
-            return
+        if not self.current_file_path: return
         try:
-            content = self.text_editor.get("1.0", tk.END)
+            content = self.text_editor.get("1.0", "end-1c")
             with open(self.current_file_path, "w", encoding="utf-8") as file:
                 file.write(content)
-        except Exception as e:
-            pass
+        except Exception: pass
     
     def open_folder(self):
         folder_path = filedialog.askdirectory()
-        if not folder_path:
-            return
-        self.populate_file_tree(folder_path)
-
-    def populate_file_tree(self, folder_path):
+        if not folder_path: return
+        
         for i in self.file_tree.get_children():
             self.file_tree.delete(i)
         
@@ -184,9 +180,8 @@ class MinimalistEditor(tk.Tk):
                 item_id = self.file_tree.insert(parent_id, "end", text=item, open=False, values=[item_path])
                 if os.path.isdir(item_path):
                     self._populate_tree_recursive(item_path, item_id)
-        except OSError:
-            pass
+        except OSError: pass
 
 if __name__ == "__main__":
-    app = MinimalistEditor()
+    app = ExactMinimalistCTkEditor()
     app.mainloop()
