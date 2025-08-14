@@ -1,2 +1,0 @@
-py -m pip install customtkinter
-py -m pip install Pillow
